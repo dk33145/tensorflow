@@ -121,6 +121,9 @@ tf.app.flags.DEFINE_string('final_tensor_name', 'final_result',
 
 # Controls the distortions used during training.
 tf.app.flags.DEFINE_boolean(
+    'checkpoint', False,
+    """Whether to save checkpoints of the model on every step.""")
+tf.app.flags.DEFINE_boolean(
     'flip_left_right', False,
     """Whether to randomly flip half of the training images horizontally.""")
 tf.app.flags.DEFINE_integer(
@@ -757,6 +760,10 @@ def main(_):
   # Create the operations we need to evaluate the accuracy of our new layer.
   evaluation_step = add_evaluation_step(final_tensor, ground_truth_input)
 
+  # Initiate Saver for checkpointing
+  saver = tf.train.Saver(tf.all_variables())
+  checkpoint_path = os.path.join(FLAGS.train_dir, 'model_checkpoints', 'model.ckpt')
+
   # Run the training for as many cycles as requested on the command line.
   for i in range(FLAGS.how_many_training_steps):
     # Get a catch of input bottleneck values, either calculated fresh every time
@@ -778,6 +785,10 @@ def main(_):
                         ground_truth_input: train_ground_truth})
     # Every so often, print out how well the graph is training.
     is_last_step = (i + 1 == FLAGS.how_many_training_steps)
+
+    if FLAGS.checkpoint:
+        saver.save(sess, checkpoint_path, global_step=i)
+
     if (i % FLAGS.eval_step_interval) == 0 or is_last_step:
       train_accuracy, cross_entropy_value = sess.run(
           [evaluation_step, cross_entropy],
